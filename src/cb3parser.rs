@@ -40,8 +40,7 @@ impl C1Parser<'_> {
     */
     pub fn check_and_eat_token(&mut self, token: C1Token) -> ParseResult {
         let current = self.lexer.current_token().unwrap();
-        println!("=== BEGIN OUTPUT =======");
-        println!("in check and eat");
+        println!("=== BEGIN CHECK AND EAT OUTPUT =======");
         println!("current: {:?} ", current);
         println!("given: {:?} ", token);
         println!("current text: {:?}", self.lexer.current_text());
@@ -90,7 +89,7 @@ impl C1Parser<'_> {
     //gibt Ergebnis des Vergleichs zurück
     pub fn next_matches(&self, token: C1Token) -> bool {
         let next = self.lexer.peek_token().unwrap();
-        println!("=== BEGIN OUTPUT =======");
+        println!("=== BEGIN NEXT MATCHES OUTPUT =======");
         println!("in next_matches");
         println!("next: {:?} ", next);
         println!("given: {:?} ", token);
@@ -118,6 +117,7 @@ impl C1Parser<'_> {
             .and(self.check_and_eat_token(C1Token::LeftBrace))
             .and(self.statementlist(self.current_token()))
             .and(self.check_and_eat_token(C1Token::RightBrace))
+        //Token mismatch here on RightBrace
     }
 
     fn function_call(&mut self, token: C1Token) -> ParseResult {
@@ -139,24 +139,38 @@ impl C1Parser<'_> {
     }
 
     fn statementlist(&mut self, token: C1Token) -> ParseResult {
-        println!("in stmt list");
-        self.block(token).or(Result::Ok(()))
+        println!("=== BEGIN STMT LIST OUTPUT =======");
+        println!("==== END OUTPUT ======");
+        //self.block(token).or(Result::Ok(()))
+        let mut res = Result::Ok(());
+        let mut fail = false;
+        while !fail {
+            res = self.block(token);
+            if res.is_err() {
+                fail = true;
+            }
+        }
+        res //TODO: What to return here if error? Returns Error if not block, but could simply be something else?
     }
 
     fn block(&mut self, token: C1Token) -> ParseResult {
+        println!("=== BEGIN  BLOCK OUTPUT =======");
         println!("in block");
         if token == C1Token::LeftBrace {
+            println!("first Block Rule {{ tsmtlist }}");
+            println!("==== END OUTPUT ======");
             self.check_and_eat_token(token)
                 .and(self.statementlist(self.current_token()))
                 .and(self.check_and_eat_token(C1Token::RightBrace))
         } else {
+            println!("second Block Rule: statement");
+            println!("==== END OUTPUT ======");
             self.statement(token)
         }
     }
 
     fn statement(&mut self, token: C1Token) -> ParseResult {
-        println!("in statement");
-        println!("=== BEGIN OUTPUT =======");
+        println!("=== BEGIN STMT OUTPUT =======");
         println!("test");
         //let intermediate_result = self.if_statement(token);
         if token == C1Token::KwIf {
@@ -213,8 +227,7 @@ impl C1Parser<'_> {
     }
 
     fn if_statement(&mut self, token: C1Token) -> ParseResult {
-        println!("in if stmt");
-        println!("=== BEGIN OUTPUT =======");
+        println!("=== BEGIN IF STMT OUTPUT =======");
         println!(
             "token in if statement: {:?}, text: {:?}",
             token,
@@ -229,7 +242,9 @@ impl C1Parser<'_> {
     }
 
     fn return_statement(&mut self, token: C1Token) -> ParseResult {
+        println!("=== BEGIN RETURN OUTPUT =======");
         println!("in return");
+        println!("==== END OUTPUT ======");
         let intermediate_result = self.check_and_eat_token(C1Token::KwReturn);
         if self.assignment(self.lexer.current_token().unwrap()).is_ok() {
             self.assignment(self.lexer.current_token().unwrap())
@@ -239,7 +254,9 @@ impl C1Parser<'_> {
     }
 
     fn printf(&mut self, token: C1Token) -> ParseResult {
-        println!("in printf");
+        println!("=== BEGIN PRINTFOUTPUT =======");
+        println!("==== END OUTPUT ======");
+
         self.check_and_eat_token(C1Token::KwPrintf)
             .and(self.check_and_eat_token(C1Token::LeftParenthesis))
             .and(self.assignment(self.lexer.current_token().unwrap()))
@@ -247,7 +264,10 @@ impl C1Parser<'_> {
     }
 
     fn type_kw(&mut self, token: C1Token) -> ParseResult {
+        println!("=== BEGIN TYPE KW OUTPUT =======");
         println!("in type kw");
+        println!("==== END OUTPUT ======");
+
         if token == C1Token::KwBoolean
             || token == C1Token::KwFloat
             || token == C1Token::KwInt
@@ -260,7 +280,7 @@ impl C1Parser<'_> {
     }
 
     fn stat_assignment(&mut self, token: C1Token) -> ParseResult {
-        println!("=== BEGIN OUTPUT =======");
+        println!("=== BEGIN STAT ASSIGN OUTPUT =======");
         println!("in stat assignement");
         println!("Token: {:?}, current: {:?}", token, self.current_token());
         println!("==== END OUTPUT ======");
@@ -271,12 +291,12 @@ impl C1Parser<'_> {
     }
 
     fn assignment(&mut self, token: C1Token) -> ParseResult {
-        println!("=== BEGIN OUTPUT =======");
+        println!("=== BEGIN ASSIGNMENT OUTPUT =======");
         println!("in assignement");
         println!(
             "token in assigment: {:?}, text: {:?}",
             token,
-            self.lexer.peek_token()
+            self.lexer.current_text()
         );
         if token == C1Token::Identifier {
             println!("ID branch in assigment");
@@ -326,7 +346,7 @@ impl C1Parser<'_> {
     }
 
     fn term(&mut self, token: C1Token) -> ParseResult {
-        println!("=== BEGIN OUTPUT =======");
+        println!("=== BEGIN TERM OUTPUT =======");
         println!("in term");
         //TODO: recursive descent does not work here. Branch with more information (test for correct token)
         let intermediate_result = self.factor(token);
@@ -335,14 +355,16 @@ impl C1Parser<'_> {
             || self.current_matches(C1Token::Slash)
             || self.current_matches(C1Token::And)
         {
+            println!("Checking next token in Term; has to be one of * / &&");
             let _ = self.check_and_eat_token(self.lexer.current_token().unwrap());
             return self.factor(self.lexer.current_token().unwrap());
         }
+        println!("return intermediate result");
         intermediate_result
     }
 
     fn factor(&mut self, token: C1Token) -> ParseResult {
-        println!("=== BEGIN OUTPUT =======");
+        println!("=== BEGIN FACTOR OUTPUT =======");
         println!("in factor");
         println!(
             "token in factor: {:?}, text: {:?}",

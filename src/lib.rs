@@ -1,9 +1,11 @@
+mod cb3parser;
 mod lexer;
 
 // Type definition for the Result that is being used by the parser. You may change it to anything
 // you want
 pub type ParseResult = Result<(), String>;
 
+pub use cb3parser::C1Parser;
 pub use lexer::C1Lexer;
 pub use lexer::C1Token;
 

@@ -40,6 +40,7 @@ impl C1Parser<'_> {
         println!("current: {:?} ", current);
         println!("given: {:?} ", token);
         println!("current text: {:?}", self.lexer.current_text());
+
         println!(
             "next text: {:?}, type: {:?}",
             self.lexer.peek_text(),
@@ -104,27 +105,29 @@ impl C1Parser<'_> {
         //let res = self.function_definition(token);
         let mut res = Result::Ok(());
         let mut fail = false;
-        while !fail {
+
+        while !fail && self.lexer.current_token().is_some() {
             res = self.function_definition(self.current_token());
             println!(
                 "After loop in Program on line {:?}",
                 self.lexer.current_line_number()
             );
-            println!(
-                "Current token: {:?}, {:?}",
-                self.current_token(),
-                self.lexer.current_text()
-            );
+
+            // println!(
+            //     "Current token: {:?}, {:?}",
+            //     self.current_token(),
+            //     self.lexer.current_text()
+            // );
 
             fail = res.is_err();
             println!("Fail is: {:?}", fail);
         }
         println!("Ending on line {:?}", self.lexer.current_line_number());
-        println!(
-            "Current token: {:?}, {:?}",
-            self.current_token(),
-            self.lexer.current_text()
-        );
+        // println!(
+        //     "Current token: {:?}, {:?}",
+        //     self.current_token(),
+        //     self.lexer.current_text()
+        // );
         res
     }
 
@@ -154,11 +157,11 @@ impl C1Parser<'_> {
         );
 
         let res = self.check_and_eat_token(C1Token::RightBrace);
-        println!(
-            "Current token eat right brace in function def: {:?}, {:?}",
-            self.current_token(),
-            self.lexer.current_text()
-        );
+        // println!(
+        //     "Current token eat right brace in function def: {:?}, {:?}",
+        //     self.current_token(),
+        //     self.lexer.current_text()
+        // );
         println!("res in func def (aftercalling right brace): {:?}", res);
         return res;
 

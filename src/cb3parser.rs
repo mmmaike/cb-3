@@ -105,7 +105,6 @@ impl C1Parser<'_> {
         let mut res = Result::Ok(());
         let mut fail = false;
         while !fail {
-            //UPDATE TOKEN HERE!!!!! ALWAYS THE FIRST TOKEN
             res = self.function_definition(self.current_token());
             println!(
                 "After loop in Program on line {:?}",
@@ -330,14 +329,30 @@ impl C1Parser<'_> {
         println!(
             "token in if statement: {:?}, text: {:?}",
             token,
-            self.lexer.peek_token()
+            self.lexer.current_text()
         );
-        println!("==== END OUTPUT ======");
-        self.check_and_eat_token(C1Token::KwIf)
+
+        let res = self
+            .check_and_eat_token(C1Token::KwIf)
             .and(self.check_and_eat_token(C1Token::LeftParenthesis))
-            .and(self.assignment(self.current_token()))
-            .and(self.check_and_eat_token(C1Token::RightParenthesis))
-            .and(self.block(self.current_token()))
+            .and(self.assignment(self.current_token()));
+        println!(
+            "Back in if stmt after assignment. res: {:?}, current token: {:?}, {:?}",
+            res,
+            self.current_token(),
+            self.lexer.current_text()
+        );
+        let next_rex = self
+            .check_and_eat_token(C1Token::RightParenthesis)
+            .and(self.block(self.current_token()));
+        println!(
+            "Back in if stmt after block. res: {:?}, current token: {:?}, {:?}",
+            next_rex,
+            self.current_token(),
+            self.lexer.current_text()
+        );
+        println!("==== END IF STMT OUTPUT ======");
+        return next_rex;
     }
 
     fn return_statement(&mut self, token: C1Token) -> ParseResult {
@@ -396,14 +411,22 @@ impl C1Parser<'_> {
         println!("Token: {:?}, current: {:?}", token, self.current_token());
         println!("==== END STAT ASSIGN OUTPUT ======");
 
-        self.check_and_eat_token(C1Token::Identifier)
+        let res = self
+            .check_and_eat_token(C1Token::Identifier)
             .and(self.check_and_eat_token(C1Token::Assign))
-            .and(self.assignment(self.current_token()))
+            .and(self.assignment(self.current_token()));
+        println!(
+            "back in stat_assignment, res is {:?}, current token: {:?}, {:?}",
+            res,
+            self.current_token(),
+            self.lexer.current_text()
+        );
+        return res;
     }
 
     fn assignment(&mut self, token: C1Token) -> ParseResult {
         println!("=== BEGIN ASSIGNMENT OUTPUT =======");
-        println!("in assignement");
+        println!("in assignment");
         println!(
             "token in assigment: {:?}, text: {:?}",
             token,
@@ -428,13 +451,28 @@ impl C1Parser<'_> {
                     self.lexer.peek_text()
                 );
                 println!("Calling expr.");
+
+                let res = self.expr(token);
+                println!(
+                    "back in assignment. res is: {:?}, current token is {:?}, {:?}",
+                    res,
+                    self.current_token(),
+                    self.lexer.current_text()
+                );
                 println!("==== END ASSIGNMENT OUTPUT ======");
-                self.expr(token)
+                return res;
             }
         } else {
-            println!("Assignment: token not Id {:?}", token);
+            println!("Assignment: token not Id, calling expr: {:?}", token);
+            let res = self.expr(token);
+            println!(
+                "back in assignment. res is: {:?}, current token is {:?}, {:?}",
+                res,
+                self.current_token(),
+                self.lexer.current_text()
+            );
             println!("==== END ASSIGNMENT OUTPUT ======");
-            self.expr(token)
+            return res;
         }
     }
 
@@ -487,30 +525,38 @@ impl C1Parser<'_> {
         if self.current_matches(C1Token::Minus) {
             let _ = self.check_and_eat_token(self.lexer.current_token().unwrap());
         }
-        let intermediate_result = self.term(self.lexer.current_token().unwrap());
+        let mut res = self.term(self.current_token());
         println!(
             "Returned to simpexpr after intermediate result. Current token: {:?}",
             self.current_token()
         );
-        if self.current_matches(C1Token::Plus)
+
+        //this whole block must be repeatable because of *
+        let mut second_term = self.current_matches(C1Token::Plus)
             || self.current_matches(C1Token::Minus)
-            || self.current_matches(C1Token::Or)
-        {
+            || self.current_matches(C1Token::Or);
+        // if self.current_matches(C1Token::Plus)
+        //     || self.current_matches(C1Token::Minus)
+        //     || self.current_matches(C1Token::Or)
+        while second_term {
             println!(
                 "staying in simpexpr, token was + - ||: {:?}",
                 self.current_token()
             );
-            let _ = self.check_and_eat_token(self.lexer.current_token().unwrap());
-            let res = self.term(self.lexer.current_token().unwrap());
+            let _ = self.check_and_eat_token(self.current_token());
+            res = self.term(self.current_token());
             println!("Returned to simpexpr after token was + - ||");
-            return res;
+            second_term = self.current_matches(C1Token::Plus)
+                || self.current_matches(C1Token::Minus)
+                || self.current_matches(C1Token::Or);
         }
+
         println!(
             "In Simpexpr, after returning. Token was not one of + - || , was: {:?}",
             self.current_token()
         );
 
-        intermediate_result
+        res
     }
 
     fn term(&mut self, token: C1Token) -> ParseResult {
@@ -564,7 +610,7 @@ impl C1Parser<'_> {
             println!("==== END OUTPUT ======");
             self.check_and_eat_token(token)
         } else if token == C1Token::Identifier {
-            if self.next_matches(C1Token::LeftBrace) {
+            if self.next_matches(C1Token::LeftParenthesis) {
                 println!(
                     "Id followed by LBrace: {:?}, {:?}",
                     self.current_token(),
@@ -584,11 +630,18 @@ impl C1Parser<'_> {
                 self.check_and_eat_token(token)
             }
         } else if token == C1Token::LeftParenthesis {
-            println!("Token was Left Parenthesis (");
+            println!("In factor: Token was Left Parenthesis (");
             println!("==== END OUTPUT ======");
-            self.check_and_eat_token(token)
-                .and(self.assignment(self.lexer.current_token().unwrap()))
-                .and(self.check_and_eat_token(C1Token::RightParenthesis))
+            let res = self
+                .check_and_eat_token(token)
+                .and(self.assignment(self.current_token()))
+                .and(self.check_and_eat_token(C1Token::RightParenthesis));
+            println!(
+                "back in factor after calling assignment, current is {:?}, {:?}",
+                self.current_token(),
+                self.lexer.current_text()
+            );
+            return res;
         } else {
             //Result::Err(String::from("Factor: Token was not factor"))
             println!(

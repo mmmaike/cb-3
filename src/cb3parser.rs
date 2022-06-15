@@ -152,6 +152,7 @@ impl C1Parser<'_> {
             "intermediate res in func def (before calling right brace): {:?}",
             intermediate_result
         );
+
         let res = self.check_and_eat_token(C1Token::RightBrace);
         println!(
             "Current token eat right brace in function def: {:?}, {:?}",
@@ -204,12 +205,22 @@ impl C1Parser<'_> {
         if token == C1Token::LeftBrace {
             println!("first Block Rule {{ tsmtlist }}");
 
-            let res = self
-                .check_and_eat_token(C1Token::LeftBrace)
-                .and(self.statementlist(self.current_token()))
-                .and(self.check_and_eat_token(C1Token::RightBrace));
-            println!("After res in first Block part, res is {:?}", res);
-            println!("==== END OUTPUT ======");
+            let mut res = self.check_and_eat_token(C1Token::LeftBrace);
+            println!(
+                "After res check and eat left Brace in first Block part, res is {:?}",
+                res
+            );
+            res = self.statementlist(self.current_token());
+            println!(
+                "After res statementlist in first Block part, res is {:?}",
+                res
+            );
+            res = self.check_and_eat_token(C1Token::RightBrace);
+            println!(
+                "After res Right Brace in first Block part, res is {:?}",
+                res
+            );
+            println!("==== END BLOcK OUTPUT ======");
             return res;
         } else if token == C1Token::Identifier
             || token == C1Token::KwIf
@@ -223,7 +234,7 @@ impl C1Parser<'_> {
                 self.lexer.current_text()
             );
             //Error here
-            println!("==== END OUTPUT ======");
+            println!("==== END BLOCK OUTPUT ======");
             self.statement(self.current_token())
         } else {
             println!("Error in block! Next token is {:?}", self.current_token());
@@ -268,6 +279,7 @@ impl C1Parser<'_> {
                 println!("Was PrintF");
                 println!("==== END OUTPUT ======");
                 self.printf(token)
+                    .and(self.check_and_eat_token(C1Token::Semicolon))
             }
             C1Token::Identifier => {
                 if self.next_matches(C1Token::Assign) {
@@ -374,13 +386,30 @@ impl C1Parser<'_> {
     }
 
     fn printf(&mut self, token: C1Token) -> ParseResult {
-        println!("=== BEGIN PRINTFOUTPUT =======");
+        println!("=== BEGIN PRINT FOUTPUT =======");
         println!("==== END OUTPUT ======");
 
-        self.check_and_eat_token(C1Token::KwPrintf)
-            .and(self.check_and_eat_token(C1Token::LeftParenthesis))
-            .and(self.assignment(self.lexer.current_token().unwrap()))
-            .and(self.check_and_eat_token(C1Token::RightParenthesis))
+        let mut res = self
+            .check_and_eat_token(C1Token::KwPrintf)
+            .and(self.check_and_eat_token(C1Token::LeftParenthesis));
+        println!(
+            "printf: res after printf(: {:?}, current token {:?}, {:?}",
+            res,
+            self.current_token(),
+            self.lexer.current_text()
+        );
+
+        res = self
+            .assignment(self.current_token())
+            .and(self.check_and_eat_token(C1Token::RightParenthesis));
+        println!(
+            "printf: res after assignment ): {:?}, current token {:?}, {:?}",
+            res,
+            self.current_token(),
+            self.lexer.current_text()
+        );
+        println!("==== END PRINTF  OUTPUT ======");
+        return res;
     }
 
     fn type_kw(&mut self, token: C1Token) -> ParseResult {
